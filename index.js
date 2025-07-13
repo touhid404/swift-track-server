@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 // Middleware
@@ -33,21 +33,68 @@ async function run() {
     // Send a ping to confirm a successful connection
 
 
-      const parcelCollections = client.db('parcelDB').collection("parcels");
+    const parcelCollections = client.db('parcelDB').collection("parcels");
 
-      app.post('/parcels', async (req, res) => {
 
-      const newParcel = req.body;
-      const result = await parcelCollections.insertOne(newParcel);
-      res.send(result);
+
+    // Create a new parcel
+    app.post('/parcels', async (req, res) => {
+      try {
+        const newParcel = req.body;
+        const result = await parcelCollections.insertOne(newParcel);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error('Error inserting parcel:', error);
+        res.status(500).send({ message: 'Failed to create parcel' });
+      }
     });
 
-    // Find the all posts
+
+    // Get all parcels or parcels by user email
     app.get('/parcels', async (req, res) => {
-      const result = await parcelCollections.find().toArray();
-      res.send(result);
+      try {
+        const userEmail = req.query.email;
 
+        const query = userEmail ? { senderEmail: userEmail } : {};
+        const options = {
+          sort: { createdAt: -1 }, // Newest first
+        };
+
+        const parcels = await parcelCollections.find(query, options).toArray();
+        res.send(parcels);
+      } catch (error) {
+        console.error('Error fetching parcels:', error);
+        res.status(500).send({ message: 'Failed to get parcels' });
+      }
     });
+    //get a single parcel by id
+
+    app.get('/parcels/:id', async (req, res) => {
+      try {
+        const parcelId = req.params.id;
+
+        const parcel = await parcelCollections.findOne({ _id: new ObjectId(parcelId) });
+
+
+        res.send(parcel);
+      } catch (error) {
+        console.error('Error fetching parcel by ID:', error);
+        res.status(500).send({ message: 'Failed to get parcel by ID' });
+      }
+    });
+
+    //Delete a parcel by id
+    app.delete('/parcels/:id', async (req, res) => {
+      try {
+        const parcelId = req.params.id;
+        const result = await parcelCollections.deleteOne({ _id: new ObjectId(parcelId) });
+        res.send(result);
+      } catch (error) {
+        console.error('Error deleting parcel:', error);
+        res.status(500).send({ message: 'Failed to delete parcel' });
+      }
+    });
+
 
 
 
